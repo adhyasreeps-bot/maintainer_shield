@@ -1,8 +1,9 @@
 """
 Maintainer Shield: Command-Line Interface (CLI).
 Provides maintainers with direct terminal commands to ingest PRs,
-run Stage 1 quick checks, Stage 2 visualizer, Stage 3 prompt injection defense,
-Stage 4 Ollama AI verdicts, run the 8-scenario demo battery, and launch the web dashboard.
+batch scan repositories with many pull requests, run Stage 1 quick checks,
+Stage 2 visualizer, Stage 3 prompt injection defense, Stage 4 Ollama AI verdicts,
+run the 8-scenario demo battery, and launch the web dashboard.
 """
 
 import sys
@@ -102,10 +103,62 @@ def cmd_check(args: argparse.Namespace) -> None:
         print_scorecard(context)
     except Exception as e:
         print(f"❌ Error analyzing PR: {str(e)}", file=sys.stderr)
-        if "Bad credentials" in str(e) or "401" in str(e) or "404" in str(e):
+        if "Bad credentials" in str(e) or "401" in str(e) or "404" in str(e) or "rate limit" in str(e).lower():
             print("\n💡 Tip: Set your GITHUB_TOKEN environment variable for authenticated requests:")
             print("   $env:GITHUB_TOKEN=\"ghp_your_token_here\"")
             print("   Or test offline scenarios using: python cli.py mock <scenario>")
+
+
+def cmd_scan(args: argparse.Namespace) -> None:
+    """Scans all open PRs in a repository."""
+    client = GitHubClient()
+    orchestrator = ShieldOrchestrator(github_client=client)
+
+    repo_str = args.repo.strip()
+    if "/" not in repo_str:
+        print("❌ Error: Repository must be in format 'owner/repo' (e.g. pallets/flask)", file=sys.stderr)
+        return
+    owner, repo = repo_str.split("/", 1)
+
+    print(f"🔎 Scanning repository '{owner}/{repo}' for {args.state} pull requests (limit: {args.limit})...")
+    try:
+        pr_numbers = client.list_prs(owner, repo, state=args.state, limit=args.limit)
+    except Exception as e:
+        print(f"❌ Error fetching PR list from GitHub: {e}", file=sys.stderr)
+        if "rate limit" in str(e).lower() or "403" in str(e):
+            print("\n💡 Tip: Set your GITHUB_TOKEN environment variable for higher API limits:")
+            print("   $env:GITHUB_TOKEN=\"ghp_your_token_here\"")
+        return
+
+    if not pr_numbers:
+        print(f"No {args.state} pull requests found in '{owner}/{repo}'.")
+        return
+
+    print(f"Found {len(pr_numbers)} PR(s): {', '.join(f'#{n}' for n in pr_numbers)}\n")
+    results = []
+    for n in pr_numbers:
+        print(f"⚡ Processing PR #{n}...")
+        try:
+            ctx = orchestrator.process_pr(f"{owner}/{repo}#{n}", persist=True)
+            v = ctx.ai_review.verdict if ctx.ai_review else "Unreviewed"
+            score = ctx.quick_checks.score if ctx.quick_checks else 0
+            results.append((n, ctx.title, ctx.author, score, v))
+            badge = "🟢" if v == "Looks good" else ("🟡" if v == "Needs work" else "🔴")
+            print(f"   => Verdict: {badge} {v} | Health Score: {score}/100")
+        except Exception as e:
+            print(f"   => ⚠️ Failed to process PR #{n}: {e}")
+
+    print("\n" + "=" * 80)
+    print(f"📊 REPOSITORY SCAN SUMMARY: {owner}/{repo}")
+    print("=" * 80)
+    print(f"{'PR #':<8} {'AUTHOR':<16} {'SCORE':<8} {'VERDICT':<14} {'TITLE'}")
+    print("-" * 80)
+    for num, title, author, score, verdict in results:
+        t_trunc = (title[:30] + "...") if len(title) > 30 else title
+        print(f"#{num:<7} @{author:<15} {score:<8} {verdict:<14} {t_trunc}")
+    print("=" * 80)
+    print("\n💡 All PRs and visual maps have been saved to the database.")
+    print("   Launch the dashboard to review them: python cli.py web\n")
 
 
 def cmd_mock(args: argparse.Namespace) -> None:
@@ -237,11 +290,17 @@ def main() -> None:
     subparsers = parser.add_subparsers(dest="command", required=True)
 
     # Command: check / review
-    check_p = subparsers.add_parser("check", help="Fetch and run full 4-stage review on a GitHub PR")
+    check_p = subparsers.add_parser("check", help="Fetch and run full 4-stage review on a single GitHub PR")
     check_p.add_argument("identifier", help="PR URL or owner/repo#number (e.g. owner/repo#10)")
 
-    review_p = subparsers.add_parser("review", help="Alias for check: Run full AI review on a GitHub PR")
+    review_p = subparsers.add_parser("review", help="Alias for check: Run full AI review on a single GitHub PR")
     review_p.add_argument("identifier", help="PR URL or owner/repo#number")
+
+    # Command: scan (Batch scan repository PRs)
+    scan_p = subparsers.add_parser("scan", help="Batch scan multiple pull requests from a repository")
+    scan_p.add_argument("repo", help="Repository in format 'owner/repo' (e.g. pallets/flask)")
+    scan_p.add_argument("--limit", type=int, default=10, help="Max number of PRs to scan (default: 10)")
+    scan_p.add_argument("--state", default="open", choices=["open", "closed", "all"], help="PR state (default: open)")
 
     # Command: mock
     mock_p = subparsers.add_parser("mock", help="Run full pipeline on offline mock scenarios")
@@ -272,6 +331,8 @@ def main() -> None:
     args = parser.parse_args()
     if args.command in ("check", "review"):
         cmd_check(args)
+    elif args.command == "scan":
+        cmd_scan(args)
     elif args.command == "mock":
         cmd_mock(args)
     elif args.command == "demo":

@@ -57,6 +57,14 @@ class GitHubClient:
 
         raise ValueError(f"Invalid PR identifier or URL format: '{identifier}'")
 
+    def list_prs(self, owner: str, repo: str, state: str = "open", limit: int = 10) -> List[int]:
+        """Fetches list of pull request numbers for a repository."""
+        url = f"{self.BASE_URL}/repos/{owner}/{repo}/pulls?state={state}&per_page={min(limit, 100)}"
+        response = self.session.get(url, timeout=15)
+        response.raise_for_status()
+        raw_prs = response.json()
+        return [pr["number"] for pr in raw_prs[:limit]]
+
     def get_pr_metadata(self, owner: str, repo: str, pr_number: int) -> Dict[str, Any]:
         """Fetches PR metadata from GitHub."""
         url = f"{self.BASE_URL}/repos/{owner}/{repo}/pulls/{pr_number}"
