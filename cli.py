@@ -115,10 +115,14 @@ def cmd_scan(args: argparse.Namespace) -> None:
     orchestrator = ShieldOrchestrator(github_client=client)
 
     repo_str = args.repo.strip()
-    if "/" not in repo_str:
-        print("❌ Error: Repository must be in format 'owner/repo' (e.g. pallets/flask)", file=sys.stderr)
+    if "github.com/" in repo_str:
+        repo_str = repo_str.split("github.com/", 1)[1]
+    repo_str = repo_str.strip("/")
+    parts = repo_str.split("/")
+    if len(parts) < 2:
+        print("❌ Error: Repository must be in format 'owner/repo' or GitHub URL (e.g. ParulPrashar/Hall-of-PRs)", file=sys.stderr)
         return
-    owner, repo = repo_str.split("/", 1)
+    owner, repo = parts[0], parts[1]
 
     print(f"🔎 Scanning repository '{owner}/{repo}' for {args.state} pull requests (limit: {args.limit})...")
     try:
