@@ -102,3 +102,9 @@ def test_web_dashboard_endpoints():
     resp = client.get("/api/prs/1")
     assert resp.status_code == 200
     assert resp.json()["pr_id"] == 1
+
+
+def test_scan_api_endpoint_validation():
+    client = TestClient(app)
+    resp = client.post("/api/scan", json={"target": "invalid_no_slash"})
+    assert resp.status_code == 400

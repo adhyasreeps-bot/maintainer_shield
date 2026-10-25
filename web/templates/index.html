@@ -24,7 +24,7 @@
         <h1 class="text-lg font-bold tracking-tight text-white flex items-center gap-2">
           Maintainer Shield <span class="text-xs bg-indigo-500/20 text-indigo-300 px-2.5 py-0.5 rounded-full border border-indigo-500/30 font-medium">Triage Console</span>
         </h1>
-        <p class="text-xs text-slate-400">Open-Source PR Gatekeeper & Visualizer (Member 2)</p>
+        <p class="text-xs text-slate-400">Open-Source PR Gatekeeper & AI Security Shield</p>
       </div>
     </div>
     <div class="flex items-center space-x-4">
@@ -43,10 +43,44 @@
 
     <!-- Left Column: PR Queue / Inbox (4 cols) -->
     <aside class="col-span-12 lg:col-span-4 flex flex-col space-y-4">
+      
+      <!-- Ingest / Live Scan Repository Card -->
+      <div class="bg-slate-800/90 border border-indigo-500/40 rounded-xl p-4 shadow-sm">
+        <div class="flex items-center justify-between mb-2">
+          <h2 class="text-xs font-bold uppercase tracking-wider text-indigo-300 flex items-center gap-1.5">
+            <span>🔍</span> Ingest & Scan Repository
+          </h2>
+          <span class="text-[10px] bg-indigo-500/20 text-indigo-300 px-2 py-0.5 rounded border border-indigo-500/30 font-medium">Live GitHub</span>
+        </div>
+        <p class="text-[11px] text-slate-400 mb-3">Submit any GitHub repo or PR URL to run live Quick Checks, Visualizer, & AI review:</p>
+        <form onsubmit="handleScanRepo(event)" class="space-y-2.5">
+          <div class="flex gap-2">
+            <input type="text" id="repoScanInput" placeholder="e.g. ParulPrashar/Hall-of-PRs or PR URL" 
+              class="flex-1 bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-xs text-slate-100 placeholder-slate-500 focus:outline-none focus:border-indigo-500 font-mono text-[11px]" required />
+            <button type="submit" id="repoScanBtn" class="bg-indigo-600 hover:bg-indigo-500 text-white px-3.5 py-2 rounded-lg text-xs font-semibold transition flex items-center gap-1 shadow-sm shrink-0">
+              <span id="scanIcon">⚡</span> <span id="scanBtnText">Analyze</span>
+            </button>
+          </div>
+          <div class="flex items-center justify-between text-[11px] text-slate-400">
+            <span>Supports <code class="text-slate-300">owner/repo</code> or full URL</span>
+            <div class="flex items-center gap-1.5">
+              <label for="scanLimitSelect" class="text-slate-400">Limit:</label>
+              <select id="scanLimitSelect" class="bg-slate-900 border border-slate-700 rounded px-1.5 py-0.5 text-[11px] text-slate-200 focus:outline-none">
+                <option value="3">3 PRs</option>
+                <option value="5" selected>5 PRs</option>
+                <option value="10">10 PRs</option>
+              </select>
+            </div>
+          </div>
+          <div id="scanStatusMsg" class="hidden text-xs rounded-lg p-2.5 transition"></div>
+        </form>
+      </div>
+
+      <!-- Triage Queue Card -->
       <div class="bg-slate-800/70 border border-slate-700/80 rounded-xl p-4 shadow-sm">
         <div class="flex items-center justify-between mb-3">
           <h2 class="text-xs font-bold uppercase tracking-wider text-slate-400">Triage Queue ({{ prs|length }})</h2>
-          <span class="text-[11px] bg-slate-700/80 px-2 py-0.5 rounded text-slate-300">8 Test Matrix Scenarios</span>
+          <span class="text-[11px] bg-slate-700/80 px-2 py-0.5 rounded text-slate-300">Live & Saved PRs</span>
         </div>
 
         <!-- Filter Buttons -->
@@ -58,7 +92,7 @@
         </div>
 
         <!-- PR Cards List -->
-        <div class="space-y-2.5 max-h-[750px] overflow-y-auto pr-1">
+        <div class="space-y-2.5 max-h-[650px] overflow-y-auto pr-1">
           {% for p in prs %}
           {% set verdict_val = p.ai_review.verdict if p.ai_review else 'Needs work' %}
           {% set is_inj = p.ai_review.is_suspicious_injection if p.ai_review else false %}
@@ -84,7 +118,7 @@
             <h3 class="text-sm font-semibold text-slate-200 mt-1 line-clamp-1">{{ p.title }}</h3>
             <div class="flex items-center justify-between text-xs text-slate-400 mt-2.5">
               <span>by @{{ p.author }}</span>
-              <span class="font-mono text-[11px]">{{ p.files|length }} files touched</span>
+              <span class="font-mono text-[11px]">{{ p.files|length }} files</span>
             </div>
           </a>
           {% endfor %}
@@ -99,183 +133,197 @@
       <div class="bg-slate-800/70 border border-slate-700/80 rounded-xl p-6 shadow-sm">
         <div class="flex flex-wrap items-start justify-between gap-4">
           <div>
-            <div class="flex items-center gap-2 text-xs text-slate-400 mb-1">
-              <span class="font-mono font-bold text-indigo-400">PR #{{ selected_pr.pr_id }}</span>
-              <span>•</span>
-              <span>Repository: <strong class="text-slate-300">{{ selected_pr.repo_name }}</strong></span>
-              <span>•</span>
-              <span>Author: <strong class="text-slate-200">@{{ selected_pr.author }}</strong></span>
+            <div class="flex items-center gap-2 mb-1">
+              <span class="text-sm font-mono text-indigo-400 font-semibold">{{ selected_pr.repo_name }}#{{ selected_pr.pr_id }}</span>
+              <span class="text-xs text-slate-400">• submitted by <strong class="text-slate-300">@{{ selected_pr.author }}</strong></span>
             </div>
-            <h2 class="text-xl font-bold text-white">{{ selected_pr.title }}</h2>
+            <h2 class="text-xl font-bold text-white tracking-tight">{{ selected_pr.title }}</h2>
           </div>
-          <div class="text-right">
-            <span class="text-xs text-slate-400 block">AI Confidence Score</span>
-            <span class="text-2xl font-black text-indigo-400">
-              {{ ((selected_pr.ai_review.confidence_score if selected_pr.ai_review else 0.9) * 100)|round(0)|int }}%
-            </span>
+          <div class="flex items-center gap-2">
+            <a href="{{ selected_pr.pr_url }}" target="_blank" class="px-3.5 py-1.5 bg-slate-700 hover:bg-slate-600 text-slate-200 text-xs font-medium rounded-lg transition border border-slate-600 flex items-center gap-1.5">
+              Open on GitHub ↗
+            </a>
           </div>
         </div>
 
         <!-- Description Box -->
-        <div class="mt-4 p-3.5 bg-slate-900/60 border border-slate-800 rounded-lg text-sm text-slate-300">
-          <span class="text-xs uppercase font-semibold text-slate-400 block mb-1">PR Description</span>
-          <p class="italic text-slate-300">{{ selected_pr.raw_description if selected_pr.raw_description else "⚠️ No description provided by the author." }}</p>
-        </div>
-
-        <!-- Quick Checks Scorecard -->
-        {% if selected_pr.quick_checks %}
-        <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 mt-4 text-xs">
-          <div class="p-2.5 bg-slate-900/50 rounded-lg border border-slate-800 flex flex-col">
-            <span class="text-slate-400">CI Status</span>
-            <span class="font-semibold mt-1 {{ 'text-emerald-400' if selected_pr.quick_checks.ci_status == 'passed' else ('text-rose-400' if selected_pr.quick_checks.ci_status == 'failed' else 'text-slate-400') }}">
-              {{ selected_pr.quick_checks.ci_status|upper }}
-            </span>
-          </div>
-          <div class="p-2.5 bg-slate-900/50 rounded-lg border border-slate-800 flex flex-col">
-            <span class="text-slate-400">Description Check</span>
-            <span class="font-semibold mt-1 {{ 'text-emerald-400' if selected_pr.quick_checks.has_description else 'text-rose-400' }}">
-              {{ 'PRESENT (' ~ selected_pr.quick_checks.description_length ~ ' chars)' if selected_pr.quick_checks.has_description else 'MISSING' }}
-            </span>
-          </div>
-          <div class="p-2.5 bg-slate-900/50 rounded-lg border border-slate-800 flex flex-col">
-            <span class="text-slate-400">Issue Reference</span>
-            <span class="font-semibold mt-1 {{ 'text-emerald-400' if selected_pr.quick_checks.has_issue_link else 'text-amber-400' }}">
-              {{ 'LINKED' if selected_pr.quick_checks.has_issue_link else 'NO LINK' }}
-            </span>
-          </div>
-          <div class="p-2.5 bg-slate-900/50 rounded-lg border border-slate-800 flex flex-col">
-            <span class="text-slate-400">Trivial / Whitespace</span>
-            <span class="font-semibold mt-1 {{ 'text-rose-400' if selected_pr.quick_checks.is_whitespace_or_typo_only else 'text-emerald-400' }}">
-              {{ 'FLAGGED' if selected_pr.quick_checks.is_whitespace_or_typo_only else 'CLEAN' }}
-            </span>
-          </div>
-        </div>
-        {% endif %}
-      </div>
-
-      <!-- Claim vs. Reality Comparator Card -->
-      {% if selected_pr.visualization and selected_pr.visualization.claim_vs_reality %}
-      <div class="bg-slate-800/70 border border-slate-700/80 rounded-xl p-6 shadow-sm">
-        <div class="flex items-center justify-between mb-3">
-          <h3 class="text-xs font-bold uppercase tracking-wider text-slate-400 flex items-center gap-2">
-            ⚖️ "Claim vs. Reality" Comparator
-          </h3>
-          {% if selected_pr.visualization.claim_vs_reality.is_mismatch %}
-            <span class="text-xs px-2.5 py-0.5 rounded-full bg-rose-500/20 text-rose-300 border border-rose-500/40 font-bold animate-pulse">
-              ⚠️ DISCREPANCY DETECTED
-            </span>
+        <div class="mt-4 pt-4 border-t border-slate-700/60">
+          <h4 class="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1.5">Description</h4>
+          {% if selected_pr.raw_description %}
+            <p class="text-xs text-slate-300 bg-slate-900/60 p-3 rounded-lg border border-slate-800 font-mono whitespace-pre-wrap">{{ selected_pr.raw_description }}</p>
           {% else %}
-            <span class="text-xs px-2.5 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 font-medium">
-              ✅ CLAIMS MATCH
-            </span>
+            <p class="text-xs text-rose-400/90 italic bg-rose-950/20 p-2.5 rounded border border-rose-900/30">⚠️ No description provided by contributor (Empty Body).</p>
           {% endif %}
         </div>
+      </div>
 
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm mt-3">
-          <div class="p-3.5 rounded-lg bg-slate-900/70 border border-slate-800">
-            <span class="text-xs text-slate-400 uppercase tracking-wider font-semibold block mb-1">Claimed Intent</span>
-            <p class="text-slate-200 font-mono text-xs">Categories: <span class="text-indigo-400 font-bold uppercase">{{ selected_pr.visualization.claim_vs_reality.claimed }}</span></p>
-          </div>
-          <div class="p-3.5 rounded-lg bg-slate-900/70 border border-slate-800">
-            <span class="text-xs text-slate-400 uppercase tracking-wider font-semibold block mb-1">Actual Code Touched</span>
-            <p class="text-slate-200 font-mono text-xs">Dominant Category: <span class="text-rose-400 font-bold uppercase">{{ selected_pr.visualization.claim_vs_reality.actual }}</span></p>
-          </div>
+      <!-- Stage 1: Quick Checks Card -->
+      {% set qc = selected_pr.quick_checks %}
+      {% if qc %}
+      <div class="bg-slate-800/70 border border-slate-700/80 rounded-xl p-6 shadow-sm">
+        <div class="flex items-center justify-between mb-4">
+          <h3 class="text-sm font-bold uppercase tracking-wider text-slate-300 flex items-center gap-2">
+            <span>⚡</span> Stage 1: Quick Sanity Checks
+          </h3>
+          <span class="text-xs px-2.5 py-1 rounded-full font-bold {{ 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40' if qc.score >= 80 else ('bg-amber-500/20 text-amber-300 border border-amber-500/40' if qc.score >= 50 else 'bg-rose-500/20 text-rose-300 border border-rose-500/40') }}">
+            Score: {{ qc.score }}/100
+          </span>
         </div>
-
-        <div class="mt-3 p-3 bg-slate-950/60 rounded-lg border border-slate-800/80 text-xs text-slate-300">
-          <strong>Analysis:</strong> {{ selected_pr.visualization.claim_vs_reality.explanation }}
+        <div class="grid grid-cols-2 md:grid-cols-4 gap-3 text-xs">
+          <div class="bg-slate-900/60 p-3 rounded-lg border border-slate-700/60">
+            <span class="text-slate-400 block text-[11px]">Description</span>
+            <span class="font-semibold {{ 'text-emerald-400' if qc.has_description else 'text-rose-400' }}">
+              {{ '✅ Present' if qc.has_description else '❌ Missing' }} ({{ qc.description_length }} ch)
+            </span>
+          </div>
+          <div class="bg-slate-900/60 p-3 rounded-lg border border-slate-700/60">
+            <span class="text-slate-400 block text-[11px]">Issue Link</span>
+            <span class="font-semibold {{ 'text-emerald-400' if qc.has_issue_link else 'text-amber-400' }}">
+              {{ '✅ ' + qc.linked_issues|join(', ') if qc.has_issue_link else '⚠️ None found' }}
+            </span>
+          </div>
+          <div class="bg-slate-900/60 p-3 rounded-lg border border-slate-700/60">
+            <span class="text-slate-400 block text-[11px]">Whitespace / Typo</span>
+            <span class="font-semibold {{ 'text-rose-400' if qc.is_whitespace_or_typo_only else 'text-emerald-400' }}">
+              {{ '⚠️ Trivial Diff' if qc.is_whitespace_or_typo_only else '✅ Substantive' }}
+            </span>
+          </div>
+          <div class="bg-slate-900/60 p-3 rounded-lg border border-slate-700/60">
+            <span class="text-slate-400 block text-[11px]">Automated CI</span>
+            <span class="font-semibold uppercase {{ 'text-emerald-400' if qc.ci_status == 'passed' else ('text-rose-400' if qc.ci_status == 'failed' else 'text-slate-400') }}">
+              {{ 'Passed' if qc.ci_status == 'passed' else ('Failed' if qc.ci_status == 'failed' else 'None') }}
+            </span>
+          </div>
         </div>
       </div>
       {% endif %}
 
-      <!-- File Change Box Map & Treemap Visualization -->
-      {% if selected_pr.visualization and selected_pr.visualization.treemap_nodes %}
-      <div class="bg-slate-800/70 border border-slate-700/80 rounded-xl p-6 shadow-sm">
-        <h3 class="text-xs font-bold uppercase tracking-wider text-slate-400 mb-3 flex items-center gap-2">
-          🗺️ File Change Proportional Box Map
-        </h3>
+      <!-- Stage 2: Visualizer Engine Cards -->
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
 
-        <!-- Interactive Box Map -->
-        <div class="space-y-2 mb-6">
-          {% for node in selected_pr.visualization.treemap_nodes %}
-          <div class="p-3 rounded-lg border border-slate-700/60 bg-slate-900/60 flex items-center justify-between">
-            <div class="flex items-center space-x-3">
-              <span class="text-lg">{{ node.icon }}</span>
-              <div>
-                <p class="text-xs font-mono font-medium text-slate-200">{{ node.filename }}</p>
-                <span class="text-[10px] text-slate-400 uppercase font-semibold">{{ node.category }}</span>
-              </div>
+        <!-- Claim vs Reality Card -->
+        {% set cr = selected_pr.visualization.claim_vs_reality if selected_pr.visualization else None %}
+        <div class="bg-slate-800/70 border border-slate-700/80 rounded-xl p-5 shadow-sm">
+          <h3 class="text-xs font-bold uppercase tracking-wider text-slate-400 mb-3 flex items-center gap-1.5">
+            <span>⚖️</span> Claim vs. Reality Comparator
+          </h3>
+          {% if cr %}
+          <div class="space-y-3 text-xs">
+            <div class="flex items-center justify-between p-2.5 rounded bg-slate-900/60 border border-slate-800">
+              <span class="text-slate-400">Claimed Scope:</span>
+              <span class="font-semibold text-indigo-300 uppercase">{{ cr.claimed if cr.claimed else 'Unspecified' }}</span>
             </div>
-            <div class="text-right">
-              <div class="text-xs font-mono">
-                <span class="text-emerald-400 font-bold">+{{ node.additions }}</span> / 
-                <span class="text-rose-400 font-bold">-{{ node.deletions }}</span>
-              </div>
-              <span class="text-[10px] text-slate-400">{{ node.percentage_of_pr }}% of PR</span>
+            <div class="flex items-center justify-between p-2.5 rounded bg-slate-900/60 border border-slate-800">
+              <span class="text-slate-400">Actual Touched Focus:</span>
+              <span class="font-semibold text-indigo-300 uppercase">{{ cr.actual }}</span>
+            </div>
+            <div class="p-3 rounded border" style="background-color: {{ cr.badge_color }}15; border-color: {{ cr.badge_color }}40;">
+              <span class="font-semibold block mb-1" style="color: {{ cr.badge_color }};">
+                {{ '⚠️ Scope Discrepancy Detected!' if cr.is_mismatch else '✅ Scope Claims Align with Reality' }}
+              </span>
+              <p class="text-[11px] text-slate-300">{{ cr.explanation }}</p>
             </div>
           </div>
-          {% endfor %}
+          {% else %}
+          <p class="text-xs text-slate-400">No claim analysis available.</p>
+          {% endif %}
         </div>
 
-        <!-- Mermaid Flowchart Diagram -->
-        <h4 class="text-xs font-bold uppercase tracking-wider text-slate-400 mb-2">Mermaid Topology Flowchart</h4>
-        <div class="bg-white p-4 rounded-lg overflow-x-auto text-slate-900 shadow-inner">
-          <pre class="mermaid">
+        <!-- Commit Hygiene Card -->
+        <div class="bg-slate-800/70 border border-slate-700/80 rounded-xl p-5 shadow-sm">
+          <h3 class="text-xs font-bold uppercase tracking-wider text-slate-400 mb-3 flex items-center gap-1.5">
+            <span>🌿</span> Commit Graph & Hygiene
+          </h3>
+          <div class="space-y-2 max-h-[170px] overflow-y-auto pr-1">
+            {% for c in commit_timeline %}
+            <div class="flex items-center justify-between p-2 bg-slate-900/60 rounded border border-slate-800 text-xs">
+              <div class="flex items-center gap-2 overflow-hidden">
+                <span class="font-mono text-[11px] text-indigo-400 shrink-0">{{ c.sha }}</span>
+                <span class="truncate text-slate-300">{{ c.message }}</span>
+              </div>
+              <span class="text-[10px] shrink-0 font-medium px-2 py-0.5 rounded {{ 'bg-amber-500/20 text-amber-300 border border-amber-500/30' if c.is_flagged else 'bg-slate-700 text-slate-300' }}">
+                {{ c.status_badge }}
+              </span>
+            </div>
+            {% endfor %}
+          </div>
+        </div>
+
+      </div>
+
+      <!-- File Treemap Diagram (Mermaid) -->
+      {% if selected_pr.visualization and selected_pr.visualization.mermaid_diagram %}
+      <div class="bg-slate-800/70 border border-slate-700/80 rounded-xl p-6 shadow-sm">
+        <h3 class="text-xs font-bold uppercase tracking-wider text-slate-400 mb-3 flex items-center gap-1.5">
+          <span>🗺️</span> File Change Map (Semantic Categories)
+        </h3>
+        <div class="bg-slate-900/80 rounded-lg p-4 border border-slate-800 flex justify-center overflow-x-auto">
+          <pre class="mermaid text-xs">
 {{ selected_pr.visualization.mermaid_diagram }}
           </pre>
         </div>
       </div>
       {% endif %}
 
-      <!-- Commit Pattern Detector & Timeline -->
-      <div class="bg-slate-800/70 border border-slate-700/80 rounded-xl p-6 shadow-sm">
-        <h3 class="text-xs font-bold uppercase tracking-wider text-slate-400 mb-3 flex items-center gap-2">
-          🌿 Commit History & Hygiene
-        </h3>
+      <!-- Stage 3 & 4: AI Review & Interactive Draft Reply -->
+      {% set rev = selected_pr.ai_review %}
+      <div class="bg-slate-800/90 border border-indigo-500/40 rounded-xl p-6 shadow-lg shadow-indigo-950/20">
+        <div class="flex flex-wrap items-center justify-between gap-3 mb-4">
+          <div class="flex items-center gap-2">
+            <span class="text-xl">🤖</span>
+            <div>
+              <h3 class="text-sm font-bold text-white">Local Ollama AI Review & Tone Tuner</h3>
+              <p class="text-xs text-slate-400">Stages 3 & 4: Injection-Hardened Verdict & Educational Draft</p>
+            </div>
+          </div>
+          {% if rev %}
+          <div class="flex items-center gap-2">
+            {% if rev.is_suspicious_injection %}
+              <span class="text-xs font-bold px-3 py-1 rounded-full bg-rose-500/20 text-rose-300 border border-rose-500/50">
+                🚨 SECURITY ALERT: Prompt Injection Blocked
+              </span>
+            {% elif rev.verdict == 'Looks good' %}
+              <span class="text-xs font-bold px-3 py-1 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/50">
+                🟢 VERDICT: Looks Good ({{ (rev.confidence_score * 100)|int }}%)
+              </span>
+            {% elif rev.verdict == 'Needs work' %}
+              <span class="text-xs font-bold px-3 py-1 rounded-full bg-amber-500/20 text-amber-300 border border-amber-500/50">
+                🟡 VERDICT: Needs Work ({{ (rev.confidence_score * 100)|int }}%)
+              </span>
+            {% else %}
+              <span class="text-xs font-bold px-3 py-1 rounded-full bg-rose-500/20 text-rose-300 border border-rose-500/50">
+                🔴 VERDICT: Likely Junk ({{ (rev.confidence_score * 100)|int }}%)
+              </span>
+            {% endif %}
+          </div>
+          {% endif %}
+        </div>
 
-        {% if selected_pr.visualization and selected_pr.visualization.commit_pattern_warnings %}
-        <div class="p-3 mb-4 rounded-lg bg-amber-500/10 border border-amber-500/30 text-amber-200 text-xs">
-          <strong>⚠️ Pattern Alerts:</strong>
-          <ul class="list-disc list-inside mt-1 space-y-0.5">
-            {% for warn in selected_pr.visualization.commit_pattern_warnings %}
-            <li>{{ warn }}</li>
-            {% endfor %}
-          </ul>
+        {% if rev %}
+        <!-- AI Reason Card -->
+        <div class="p-3.5 rounded-lg bg-slate-900/70 border border-slate-700/80 text-xs mb-4">
+          <strong class="text-indigo-300 block mb-1">Reasoning Analysis:</strong>
+          <span class="text-slate-300">{{ rev.short_reason }}</span>
         </div>
         {% endif %}
 
+        <!-- Interactive Maintainer Draft Reply Textarea -->
         <div class="space-y-2">
-          {% for c in commit_timeline %}
-          <div class="flex items-center justify-between p-2.5 rounded-lg bg-slate-900/60 border border-slate-800 text-xs font-mono">
-            <div class="flex items-center gap-3">
-              <span class="text-indigo-400 font-bold">{{ c.sha }}</span>
-              <span class="text-slate-300">{{ c.message }}</span>
-            </div>
-            <span class="text-[10px] px-2 py-0.5 rounded font-medium {{ 'bg-amber-500/20 text-amber-300' if c.is_flagged else 'bg-slate-700 text-slate-300' }}">
-              {{ c.status_badge }}
-            </span>
-          </div>
-          {% endfor %}
-        </div>
-      </div>
-
-      <!-- Interactive Reply & Action Bar -->
-      <div class="bg-slate-800/70 border border-slate-700/80 rounded-xl p-6 shadow-sm">
-        <div class="flex items-center justify-between mb-3">
-          <h3 class="text-xs font-bold uppercase tracking-wider text-slate-400 flex items-center gap-2">
-            💬 Draft Educational Reply (Ollama Assisted)
-          </h3>
-          <span class="text-xs text-slate-400">Human Maintainer in Control</span>
+          <label for="replyTextarea" class="text-xs font-semibold text-slate-300 flex items-center justify-between">
+            <span>Educational Draft Reply (Editable by Maintainer):</span>
+            <span class="text-[11px] text-slate-400 font-normal">Human-in-the-Loop oversight</span>
+          </label>
+          <textarea id="replyTextarea" rows="4" 
+            class="w-full bg-slate-900 border border-slate-700 rounded-lg p-3 text-xs text-slate-100 focus:outline-none focus:border-indigo-500 font-sans leading-relaxed">{{ rev.draft_reply if rev else '' }}</textarea>
         </div>
 
-        <textarea id="replyTextarea" rows="4" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-3 text-sm text-slate-200 focus:ring-2 focus:ring-indigo-500 focus:outline-none">{{ selected_pr.ai_review.draft_reply if selected_pr.ai_review else "Thank you for your contribution!" }}</textarea>
-
-        <div class="flex flex-wrap items-center justify-between gap-3 mt-4">
+        <!-- Action Buttons -->
+        <div class="flex flex-wrap items-center justify-between gap-3 mt-4 pt-4 border-t border-slate-700/60">
           <div class="flex items-center gap-2">
-            <button onclick="copyReply()" class="px-4 py-2 bg-slate-700 hover:bg-slate-600 text-white text-xs font-semibold rounded-lg transition flex items-center gap-1.5 shadow">
+            <button onclick="copyReply()" class="px-3.5 py-2 bg-slate-700 hover:bg-slate-600 text-slate-200 text-xs font-medium rounded-lg transition border border-slate-600 flex items-center gap-1.5">
               📋 Copy Reply
             </button>
-            <button onclick="postAction('apply_label')" class="px-4 py-2 bg-slate-700 hover:bg-slate-600 text-white text-xs font-semibold rounded-lg transition flex items-center gap-1.5 shadow">
+            <button onclick="postAction('apply_label')" class="px-3.5 py-2 bg-slate-700 hover:bg-slate-600 text-slate-200 text-xs font-medium rounded-lg transition border border-slate-600 flex items-center gap-1.5">
               🏷️ Apply Label
             </button>
           </div>
@@ -301,6 +349,58 @@
   </footer>
 
   <script>
+    async function handleScanRepo(e) {
+      e.preventDefault();
+      const input = document.getElementById("repoScanInput");
+      const limit = document.getElementById("scanLimitSelect").value;
+      const btn = document.getElementById("repoScanBtn");
+      const btnText = document.getElementById("scanBtnText");
+      const icon = document.getElementById("scanIcon");
+      const statusMsg = document.getElementById("scanStatusMsg");
+
+      const target = input.value.trim();
+      if (!target) return;
+
+      btn.disabled = true;
+      icon.innerText = "⏳";
+      btnText.innerText = "Scanning...";
+      statusMsg.className = "text-xs rounded-lg p-2.5 bg-indigo-500/20 border border-indigo-500/40 text-indigo-200 block";
+      statusMsg.innerText = `Fetching PRs from GitHub and running 4-stage review on "${target}"...`;
+
+      try {
+        const res = await fetch("/api/scan", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ target: target, limit: parseInt(limit, 10), state: "open" })
+        });
+        const data = await res.json();
+
+        if (res.ok && data.success) {
+          statusMsg.className = "text-xs rounded-lg p-2.5 bg-emerald-500/20 border border-emerald-500/40 text-emerald-300 block";
+          statusMsg.innerText = `✅ ${data.message} Loading results...`;
+          setTimeout(() => {
+            if (data.first_pr_id) {
+              window.location.href = `/?selected_id=${data.first_pr_id}`;
+            } else {
+              window.location.reload();
+            }
+          }, 1200);
+        } else {
+          statusMsg.className = "text-xs rounded-lg p-2.5 bg-rose-500/20 border border-rose-500/40 text-rose-300 block";
+          statusMsg.innerText = `❌ Error: ${data.detail || data.message || "Failed to scan repository"}`;
+          btn.disabled = false;
+          icon.innerText = "⚡";
+          btnText.innerText = "Analyze";
+        }
+      } catch (err) {
+        statusMsg.className = "text-xs rounded-lg p-2.5 bg-rose-500/20 border border-rose-500/40 text-rose-300 block";
+        statusMsg.innerText = `❌ Network error scanning repository: ${err.message}`;
+        btn.disabled = false;
+        icon.innerText = "⚡";
+        btnText.innerText = "Analyze";
+      }
+    }
+
     function copyReply() {
       const textarea = document.getElementById("replyTextarea");
       navigator.clipboard.writeText(textarea.value);

@@ -349,3 +349,79 @@ async def trigger_ai_review(pr_id: int, repo_name: Optional[str] = "org/maintain
     pr.ai_review = reviewer.review(pr)
     db.save_pr(pr)
     return {"success": True, "ai_review": pr.ai_review}
+
+
+class ScanPayload(BaseModel):
+    target: str
+    limit: Optional[int] = 5
+    state: Optional[str] = "open"
+
+
+@app.post("/api/scan")
+async def scan_repository(payload: ScanPayload):
+    """REST API: Scans and analyzes a repository or specific PR directly from the web interface."""
+    from core.github_client import GitHubClient
+    client = GitHubClient()
+    target = payload.target.strip()
+
+    # Check if target is a single PR (e.g. owner/repo#123 or https://github.com/owner/repo/pull/123)
+    try:
+        owner, repo, pr_num = client.parse_pr_identifier(target)
+        ctx = orchestrator.process_pr(f"{owner}/{repo}#{pr_num}", persist=True)
+        if not ctx.visualization:
+            ctx.visualization = generate_visualizer_data(ctx)
+        return {
+            "success": True,
+            "message": f"Successfully analyzed PR #{ctx.pr_id} from {ctx.repo_name}!",
+            "first_pr_id": ctx.pr_id,
+            "count": 1,
+        }
+    except ValueError:
+        pass
+
+    # Target is a repository
+    repo_str = target
+    if "github.com/" in repo_str:
+        repo_str = repo_str.split("github.com/", 1)[1]
+    repo_str = repo_str.strip("/")
+    parts = repo_str.split("/")
+    if len(parts) < 2:
+        raise HTTPException(
+            status_code=400,
+            detail="Invalid repository format. Please use 'owner/repo' (e.g. ParulPrashar/Hall-of-PRs) or full URL."
+        )
+    owner, repo = parts[0], parts[1]
+
+    try:
+        pr_numbers = client.list_prs(owner, repo, state=payload.state or "open", limit=payload.limit or 5)
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=f"Failed to fetch PRs from GitHub: {str(e)}")
+
+    if not pr_numbers:
+        return {
+            "success": True,
+            "message": f"No {payload.state} pull requests found in {owner}/{repo}.",
+            "count": 0,
+            "first_pr_id": None,
+        }
+
+    scanned_prs = []
+    for n in pr_numbers:
+        try:
+            ctx = orchestrator.process_pr(f"{owner}/{repo}#{n}", persist=True)
+            if not ctx.visualization:
+                ctx.visualization = generate_visualizer_data(ctx)
+            scanned_prs.append(ctx)
+        except Exception:
+            continue
+
+    if not scanned_prs:
+        raise HTTPException(status_code=500, detail="Failed to process PRs from repository.")
+
+    first_id = scanned_prs[0].pr_id if scanned_prs else None
+    return {
+        "success": True,
+        "message": f"Successfully scanned and analyzed {len(scanned_prs)} PR(s) from {owner}/{repo}!",
+        "count": len(scanned_prs),
+        "first_pr_id": first_id,
+    }
