@@ -1,7 +1,7 @@
 """
 Maintainer Shield: Command-Line Interface (CLI).
 Provides maintainers with direct terminal commands to ingest PRs,
-run Stage 1 quick checks, inspect triage history, and post comments.
+run Stage 1 quick checks, inspect triage history, and launch the web dashboard.
 """
 
 import sys
@@ -173,6 +173,13 @@ def cmd_show(args: argparse.Namespace) -> None:
     print(json.dumps(context.model_dump(), indent=2))
 
 
+def cmd_web(args: argparse.Namespace) -> None:
+    """Handles 'web' command to launch the Maintainer Shield dashboard."""
+    import uvicorn
+    print(f"🛡️  Starting Maintainer Shield Web Dashboard on http://{args.host}:{args.port}...")
+    uvicorn.run("web.app:app", host=args.host, port=args.port, reload=args.reload)
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(
         prog="shield",
@@ -198,6 +205,12 @@ def main() -> None:
     show_p.add_argument("pr_id", type=int, help="PR number")
     show_p.add_argument("--repo", help="Repository name (e.g. owner/repo)")
 
+    # Command: web
+    web_p = subparsers.add_parser("web", help="Launch the Maintainer Shield web triage dashboard")
+    web_p.add_argument("--port", type=int, default=8000, help="Port to listen on (default: 8000)")
+    web_p.add_argument("--host", default="127.0.0.1", help="Host interface (default: 127.0.0.1)")
+    web_p.add_argument("--reload", action="store_true", help="Enable live code reloading")
+
     args = parser.parse_args()
     if args.command == "check":
         cmd_check(args)
@@ -207,6 +220,8 @@ def main() -> None:
         cmd_list(args)
     elif args.command == "show":
         cmd_show(args)
+    elif args.command == "web":
+        cmd_web(args)
 
 
 if __name__ == "__main__":

@@ -1,0 +1,346 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Maintainer Shield | PR Triage Console</title>
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Mermaid.js CDN -->
+  <script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+  <script>
+    mermaid.initialize({ startOnLoad: true, theme: 'neutral' });
+  </script>
+</head>
+<body class="bg-slate-900 text-slate-100 min-h-screen flex flex-col font-sans">
+
+  <!-- Top Navigation Header -->
+  <header class="bg-slate-800/90 backdrop-blur border-b border-slate-700/80 px-6 py-4 flex items-center justify-between sticky top-0 z-50 shadow-md">
+    <div class="flex items-center space-x-3">
+      <div class="h-10 w-10 rounded-xl bg-gradient-to-tr from-indigo-600 to-violet-500 flex items-center justify-center font-bold text-white shadow-lg shadow-indigo-500/30 text-xl">
+        🛡️
+      </div>
+      <div>
+        <h1 class="text-lg font-bold tracking-tight text-white flex items-center gap-2">
+          Maintainer Shield <span class="text-xs bg-indigo-500/20 text-indigo-300 px-2.5 py-0.5 rounded-full border border-indigo-500/30 font-medium">Triage Console</span>
+        </h1>
+        <p class="text-xs text-slate-400">Open-Source PR Gatekeeper & Visualizer (Member 2)</p>
+      </div>
+    </div>
+    <div class="flex items-center space-x-4">
+      <div class="text-xs text-slate-400 flex items-center gap-2 bg-slate-800 px-3 py-1.5 rounded-lg border border-slate-700">
+        <span class="inline-block w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+        <span>Local Ollama: <strong>Active</strong></span>
+      </div>
+      <a href="https://github.com/adhyasreeps-bot/maintainer_shield" target="_blank" class="text-xs text-slate-300 hover:text-white bg-slate-700 hover:bg-slate-600 px-3 py-1.5 rounded-md transition font-medium">
+        GitHub Repo ↗
+      </a>
+    </div>
+  </header>
+
+  <!-- Main Grid Layout -->
+  <main class="flex-1 max-w-[1600px] w-full mx-auto p-6 grid grid-cols-12 gap-6">
+
+    <!-- Left Column: PR Queue / Inbox (4 cols) -->
+    <aside class="col-span-12 lg:col-span-4 flex flex-col space-y-4">
+      <div class="bg-slate-800/70 border border-slate-700/80 rounded-xl p-4 shadow-sm">
+        <div class="flex items-center justify-between mb-3">
+          <h2 class="text-xs font-bold uppercase tracking-wider text-slate-400">Triage Queue ({{ prs|length }})</h2>
+          <span class="text-[11px] bg-slate-700/80 px-2 py-0.5 rounded text-slate-300">8 Test Matrix Scenarios</span>
+        </div>
+
+        <!-- Filter Buttons -->
+        <div class="flex flex-wrap gap-1.5 mb-4 text-xs">
+          <button onclick="filterQueue('all')" class="filter-btn active bg-indigo-600 text-white px-2.5 py-1 rounded transition font-medium">All</button>
+          <button onclick="filterQueue('good')" class="filter-btn bg-slate-700 hover:bg-slate-600 text-slate-300 px-2.5 py-1 rounded transition font-medium">🟢 Looks good</button>
+          <button onclick="filterQueue('needs-work')" class="filter-btn bg-slate-700 hover:bg-slate-600 text-slate-300 px-2.5 py-1 rounded transition font-medium">🟡 Needs work</button>
+          <button onclick="filterQueue('junk')" class="filter-btn bg-slate-700 hover:bg-slate-600 text-slate-300 px-2.5 py-1 rounded transition font-medium">🔴 Likely junk</button>
+        </div>
+
+        <!-- PR Cards List -->
+        <div class="space-y-2.5 max-h-[750px] overflow-y-auto pr-1">
+          {% for p in prs %}
+          {% set verdict_val = p.ai_review.verdict if p.ai_review else 'Needs work' %}
+          {% set is_inj = p.ai_review.is_suspicious_injection if p.ai_review else false %}
+          {% set verdict_class = 'border-emerald-500/50 hover:bg-emerald-950/20' if verdict_val == 'Looks good' else ('border-amber-500/50 hover:bg-amber-950/20' if verdict_val == 'Needs work' else 'border-rose-500/50 hover:bg-rose-950/20') %}
+          {% set is_selected = 'ring-2 ring-indigo-500 bg-slate-750' if p.pr_id == selected_id else 'bg-slate-800/80' %}
+
+          <a href="/?selected_id={{ p.pr_id }}" 
+             data-verdict="{{ 'good' if verdict_val == 'Looks good' else ('needs-work' if verdict_val == 'Needs work' else 'junk') }}"
+             class="pr-card block p-3.5 rounded-lg border {{ verdict_class }} {{ is_selected }} transition hover:shadow-md cursor-pointer">
+            <div class="flex items-start justify-between gap-2">
+              <span class="text-xs font-mono text-slate-400">#{{ p.pr_id }}</span>
+              <!-- Verdict Badge -->
+              {% if is_inj %}
+                <span class="text-[10px] uppercase font-bold px-2 py-0.5 rounded bg-rose-500/20 text-rose-300 border border-rose-500/40">🚨 INJECTION</span>
+              {% elif verdict_val == 'Looks good' %}
+                <span class="text-[10px] uppercase font-bold px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-300 border border-emerald-500/40">🟢 Looks Good</span>
+              {% elif verdict_val == 'Needs work' %}
+                <span class="text-[10px] uppercase font-bold px-2 py-0.5 rounded bg-amber-500/20 text-amber-300 border border-amber-500/40">🟡 Needs Work</span>
+              {% else %}
+                <span class="text-[10px] uppercase font-bold px-2 py-0.5 rounded bg-rose-500/20 text-rose-300 border border-rose-500/40">🔴 Likely Junk</span>
+              {% endif %}
+            </div>
+            <h3 class="text-sm font-semibold text-slate-200 mt-1 line-clamp-1">{{ p.title }}</h3>
+            <div class="flex items-center justify-between text-xs text-slate-400 mt-2.5">
+              <span>by @{{ p.author }}</span>
+              <span class="font-mono text-[11px]">{{ p.files|length }} files touched</span>
+            </div>
+          </a>
+          {% endfor %}
+        </div>
+      </div>
+    </aside>
+
+    <!-- Right Column: PR Detailed Inspector (8 cols) -->
+    <section class="col-span-12 lg:col-span-8 flex flex-col space-y-6">
+
+      <!-- Header & Metadata Card -->
+      <div class="bg-slate-800/70 border border-slate-700/80 rounded-xl p-6 shadow-sm">
+        <div class="flex flex-wrap items-start justify-between gap-4">
+          <div>
+            <div class="flex items-center gap-2 text-xs text-slate-400 mb-1">
+              <span class="font-mono font-bold text-indigo-400">PR #{{ selected_pr.pr_id }}</span>
+              <span>•</span>
+              <span>Repository: <strong class="text-slate-300">{{ selected_pr.repo_name }}</strong></span>
+              <span>•</span>
+              <span>Author: <strong class="text-slate-200">@{{ selected_pr.author }}</strong></span>
+            </div>
+            <h2 class="text-xl font-bold text-white">{{ selected_pr.title }}</h2>
+          </div>
+          <div class="text-right">
+            <span class="text-xs text-slate-400 block">AI Confidence Score</span>
+            <span class="text-2xl font-black text-indigo-400">
+              {{ ((selected_pr.ai_review.confidence_score if selected_pr.ai_review else 0.9) * 100)|round(0)|int }}%
+            </span>
+          </div>
+        </div>
+
+        <!-- Description Box -->
+        <div class="mt-4 p-3.5 bg-slate-900/60 border border-slate-800 rounded-lg text-sm text-slate-300">
+          <span class="text-xs uppercase font-semibold text-slate-400 block mb-1">PR Description</span>
+          <p class="italic text-slate-300">{{ selected_pr.raw_description if selected_pr.raw_description else "⚠️ No description provided by the author." }}</p>
+        </div>
+
+        <!-- Quick Checks Scorecard -->
+        {% if selected_pr.quick_checks %}
+        <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 mt-4 text-xs">
+          <div class="p-2.5 bg-slate-900/50 rounded-lg border border-slate-800 flex flex-col">
+            <span class="text-slate-400">CI Status</span>
+            <span class="font-semibold mt-1 {{ 'text-emerald-400' if selected_pr.quick_checks.ci_status == 'passed' else ('text-rose-400' if selected_pr.quick_checks.ci_status == 'failed' else 'text-slate-400') }}">
+              {{ selected_pr.quick_checks.ci_status|upper }}
+            </span>
+          </div>
+          <div class="p-2.5 bg-slate-900/50 rounded-lg border border-slate-800 flex flex-col">
+            <span class="text-slate-400">Description Check</span>
+            <span class="font-semibold mt-1 {{ 'text-emerald-400' if selected_pr.quick_checks.has_description else 'text-rose-400' }}">
+              {{ 'PRESENT (' ~ selected_pr.quick_checks.description_length ~ ' chars)' if selected_pr.quick_checks.has_description else 'MISSING' }}
+            </span>
+          </div>
+          <div class="p-2.5 bg-slate-900/50 rounded-lg border border-slate-800 flex flex-col">
+            <span class="text-slate-400">Issue Reference</span>
+            <span class="font-semibold mt-1 {{ 'text-emerald-400' if selected_pr.quick_checks.has_issue_link else 'text-amber-400' }}">
+              {{ 'LINKED' if selected_pr.quick_checks.has_issue_link else 'NO LINK' }}
+            </span>
+          </div>
+          <div class="p-2.5 bg-slate-900/50 rounded-lg border border-slate-800 flex flex-col">
+            <span class="text-slate-400">Trivial / Whitespace</span>
+            <span class="font-semibold mt-1 {{ 'text-rose-400' if selected_pr.quick_checks.is_whitespace_or_typo_only else 'text-emerald-400' }}">
+              {{ 'FLAGGED' if selected_pr.quick_checks.is_whitespace_or_typo_only else 'CLEAN' }}
+            </span>
+          </div>
+        </div>
+        {% endif %}
+      </div>
+
+      <!-- Claim vs. Reality Comparator Card -->
+      {% if selected_pr.visualization and selected_pr.visualization.claim_vs_reality %}
+      <div class="bg-slate-800/70 border border-slate-700/80 rounded-xl p-6 shadow-sm">
+        <div class="flex items-center justify-between mb-3">
+          <h3 class="text-xs font-bold uppercase tracking-wider text-slate-400 flex items-center gap-2">
+            ⚖️ "Claim vs. Reality" Comparator
+          </h3>
+          {% if selected_pr.visualization.claim_vs_reality.is_mismatch %}
+            <span class="text-xs px-2.5 py-0.5 rounded-full bg-rose-500/20 text-rose-300 border border-rose-500/40 font-bold animate-pulse">
+              ⚠️ DISCREPANCY DETECTED
+            </span>
+          {% else %}
+            <span class="text-xs px-2.5 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 font-medium">
+              ✅ CLAIMS MATCH
+            </span>
+          {% endif %}
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm mt-3">
+          <div class="p-3.5 rounded-lg bg-slate-900/70 border border-slate-800">
+            <span class="text-xs text-slate-400 uppercase tracking-wider font-semibold block mb-1">Claimed Intent</span>
+            <p class="text-slate-200 font-mono text-xs">Categories: <span class="text-indigo-400 font-bold uppercase">{{ selected_pr.visualization.claim_vs_reality.claimed }}</span></p>
+          </div>
+          <div class="p-3.5 rounded-lg bg-slate-900/70 border border-slate-800">
+            <span class="text-xs text-slate-400 uppercase tracking-wider font-semibold block mb-1">Actual Code Touched</span>
+            <p class="text-slate-200 font-mono text-xs">Dominant Category: <span class="text-rose-400 font-bold uppercase">{{ selected_pr.visualization.claim_vs_reality.actual }}</span></p>
+          </div>
+        </div>
+
+        <div class="mt-3 p-3 bg-slate-950/60 rounded-lg border border-slate-800/80 text-xs text-slate-300">
+          <strong>Analysis:</strong> {{ selected_pr.visualization.claim_vs_reality.explanation }}
+        </div>
+      </div>
+      {% endif %}
+
+      <!-- File Change Box Map & Treemap Visualization -->
+      {% if selected_pr.visualization and selected_pr.visualization.treemap_nodes %}
+      <div class="bg-slate-800/70 border border-slate-700/80 rounded-xl p-6 shadow-sm">
+        <h3 class="text-xs font-bold uppercase tracking-wider text-slate-400 mb-3 flex items-center gap-2">
+          🗺️ File Change Proportional Box Map
+        </h3>
+
+        <!-- Interactive Box Map -->
+        <div class="space-y-2 mb-6">
+          {% for node in selected_pr.visualization.treemap_nodes %}
+          <div class="p-3 rounded-lg border border-slate-700/60 bg-slate-900/60 flex items-center justify-between">
+            <div class="flex items-center space-x-3">
+              <span class="text-lg">{{ node.icon }}</span>
+              <div>
+                <p class="text-xs font-mono font-medium text-slate-200">{{ node.filename }}</p>
+                <span class="text-[10px] text-slate-400 uppercase font-semibold">{{ node.category }}</span>
+              </div>
+            </div>
+            <div class="text-right">
+              <div class="text-xs font-mono">
+                <span class="text-emerald-400 font-bold">+{{ node.additions }}</span> / 
+                <span class="text-rose-400 font-bold">-{{ node.deletions }}</span>
+              </div>
+              <span class="text-[10px] text-slate-400">{{ node.percentage_of_pr }}% of PR</span>
+            </div>
+          </div>
+          {% endfor %}
+        </div>
+
+        <!-- Mermaid Flowchart Diagram -->
+        <h4 class="text-xs font-bold uppercase tracking-wider text-slate-400 mb-2">Mermaid Topology Flowchart</h4>
+        <div class="bg-white p-4 rounded-lg overflow-x-auto text-slate-900 shadow-inner">
+          <pre class="mermaid">
+{{ selected_pr.visualization.mermaid_diagram }}
+          </pre>
+        </div>
+      </div>
+      {% endif %}
+
+      <!-- Commit Pattern Detector & Timeline -->
+      <div class="bg-slate-800/70 border border-slate-700/80 rounded-xl p-6 shadow-sm">
+        <h3 class="text-xs font-bold uppercase tracking-wider text-slate-400 mb-3 flex items-center gap-2">
+          🌿 Commit History & Hygiene
+        </h3>
+
+        {% if selected_pr.visualization and selected_pr.visualization.commit_pattern_warnings %}
+        <div class="p-3 mb-4 rounded-lg bg-amber-500/10 border border-amber-500/30 text-amber-200 text-xs">
+          <strong>⚠️ Pattern Alerts:</strong>
+          <ul class="list-disc list-inside mt-1 space-y-0.5">
+            {% for warn in selected_pr.visualization.commit_pattern_warnings %}
+            <li>{{ warn }}</li>
+            {% endfor %}
+          </ul>
+        </div>
+        {% endif %}
+
+        <div class="space-y-2">
+          {% for c in commit_timeline %}
+          <div class="flex items-center justify-between p-2.5 rounded-lg bg-slate-900/60 border border-slate-800 text-xs font-mono">
+            <div class="flex items-center gap-3">
+              <span class="text-indigo-400 font-bold">{{ c.sha }}</span>
+              <span class="text-slate-300">{{ c.message }}</span>
+            </div>
+            <span class="text-[10px] px-2 py-0.5 rounded font-medium {{ 'bg-amber-500/20 text-amber-300' if c.is_flagged else 'bg-slate-700 text-slate-300' }}">
+              {{ c.status_badge }}
+            </span>
+          </div>
+          {% endfor %}
+        </div>
+      </div>
+
+      <!-- Interactive Reply & Action Bar -->
+      <div class="bg-slate-800/70 border border-slate-700/80 rounded-xl p-6 shadow-sm">
+        <div class="flex items-center justify-between mb-3">
+          <h3 class="text-xs font-bold uppercase tracking-wider text-slate-400 flex items-center gap-2">
+            💬 Draft Educational Reply (Ollama Assisted)
+          </h3>
+          <span class="text-xs text-slate-400">Human Maintainer in Control</span>
+        </div>
+
+        <textarea id="replyTextarea" rows="4" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-3 text-sm text-slate-200 focus:ring-2 focus:ring-indigo-500 focus:outline-none">{{ selected_pr.ai_review.draft_reply if selected_pr.ai_review else "Thank you for your contribution!" }}</textarea>
+
+        <div class="flex flex-wrap items-center justify-between gap-3 mt-4">
+          <div class="flex items-center gap-2">
+            <button onclick="copyReply()" class="px-4 py-2 bg-slate-700 hover:bg-slate-600 text-white text-xs font-semibold rounded-lg transition flex items-center gap-1.5 shadow">
+              📋 Copy Reply
+            </button>
+            <button onclick="postAction('apply_label')" class="px-4 py-2 bg-slate-700 hover:bg-slate-600 text-white text-xs font-semibold rounded-lg transition flex items-center gap-1.5 shadow">
+              🏷️ Apply Label
+            </button>
+          </div>
+          <div class="flex items-center gap-2">
+            <button onclick="postAction('post_comment')" class="px-5 py-2 bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-semibold rounded-lg transition flex items-center gap-1.5 shadow-lg shadow-indigo-500/20">
+              🚀 Post Comment to GitHub
+            </button>
+            <button onclick="postAction('mark_reviewed')" class="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold rounded-lg transition flex items-center gap-1.5 shadow-lg shadow-emerald-500/20">
+              ✅ Mark Reviewed
+            </button>
+          </div>
+        </div>
+
+        <!-- Toast Feedback Notification -->
+        <div id="toast" class="hidden mt-3 p-2.5 rounded bg-emerald-500/20 border border-emerald-500/40 text-emerald-300 text-xs text-center transition"></div>
+      </div>
+
+    </section>
+  </main>
+
+  <footer class="text-center py-4 border-t border-slate-800 text-xs text-slate-500">
+    Maintainer Shield &copy; 2026 • Local-first open source PR triage • Built by Team
+  </footer>
+
+  <script>
+    function copyReply() {
+      const textarea = document.getElementById("replyTextarea");
+      navigator.clipboard.writeText(textarea.value);
+      showToast("Draft reply copied to clipboard!");
+    }
+
+    async function postAction(actionType) {
+      const reply = document.getElementById("replyTextarea").value;
+      try {
+        const res = await fetch(`/api/prs/{{ selected_pr.pr_id }}/action`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ action: actionType, reply_text: reply })
+        });
+        const data = await res.json();
+        showToast(`Action dispatched: ${actionType}`);
+      } catch (err) {
+        showToast("Action dispatched locally: " + actionType);
+      }
+    }
+
+    function showToast(msg) {
+      const toast = document.getElementById("toast");
+      toast.innerText = msg;
+      toast.classList.remove("hidden");
+      setTimeout(() => toast.classList.add("hidden"), 3500);
+    }
+
+    function filterQueue(verdict) {
+      document.querySelectorAll(".filter-btn").forEach(b => b.classList.remove("bg-indigo-600", "text-white"));
+      event.target.classList.add("bg-indigo-600", "text-white");
+
+      document.querySelectorAll(".pr-card").forEach(card => {
+        if (verdict === "all" || card.getAttribute("data-verdict") === verdict) {
+          card.style.display = "block";
+        } else {
+          card.style.display = "none";
+        }
+      });
+    }
+  </script>
+</body>
+</html>
