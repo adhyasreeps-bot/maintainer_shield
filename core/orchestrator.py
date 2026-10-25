@@ -22,9 +22,19 @@ class ShieldOrchestrator:
         self.github_client = github_client or GitHubClient()
         self.db = db or ShieldDatabase()
 
-        # Hooks to allow Member 2 (Visualizer) and Member 3 (AI) to register their handlers
-        self.visualizer_handler: Optional[Callable[[PRShieldContext], VisualizerData]] = None
-        self.ai_review_handler: Optional[Callable[[PRShieldContext], AIReviewResult]] = None
+        # Default hook for Member 2 (Visualizer)
+        try:
+            from visualizer.diagram_generator import generate_visualizer_data
+            self.visualizer_handler: Optional[Callable[[PRShieldContext], VisualizerData]] = generate_visualizer_data
+        except ImportError:
+            self.visualizer_handler = None
+
+        # Default hook for Member 3 (Ollama AI Reviewer)
+        try:
+            from ai.reviewer import review_pr
+            self.ai_review_handler: Optional[Callable[[PRShieldContext], AIReviewResult]] = review_pr
+        except ImportError:
+            self.ai_review_handler = None
 
     def register_visualizer_handler(self, handler: Callable[[PRShieldContext], VisualizerData]) -> None:
         """Allows Member 2 to hook their Visualizer Engine into the pipeline."""

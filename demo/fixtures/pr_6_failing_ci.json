@@ -1,0 +1,39 @@
+{
+  "pr_id": 6,
+  "repo_name": "org/maintainer_shield",
+  "pr_url": "https://github.com/org/maintainer_shield/pull/6",
+  "author": "db_guru",
+  "title": "feat: new database driver",
+  "raw_description": "Implements experimental async Postgres driver for improved query throughput. Fixes #204.",
+  "commits": [
+    {
+      "sha": "b8c9d0e1f2a3",
+      "message": "feat: postgres async driver",
+      "author": "db_guru",
+      "date": "2026-10-25T12:30:00Z"
+    }
+  ],
+  "files": [
+    {
+      "filename": "src/database/async_driver.py",
+      "category": "core",
+      "additions": 850,
+      "deletions": 40,
+      "status": "added",
+      "patch": "@@ -0,0 +1,850 @@\n+class AsyncPostgresPool:\n+    def __init__(self, dsn):\n+        self.dsn = dsn\n"
+    }
+  ],
+  "quick_checks": {
+    "has_description": true,
+    "description_length": 95,
+    "has_issue_link": true,
+    "linked_issues": ["#204"],
+    "is_whitespace_or_typo_only": false,
+    "ci_status": "failed",
+    "flags": ["Automated CI tests failed"],
+    "score": 50,
+    "summary": "Large new driver implementation, but existing CI test suite broke."
+  },
+  "expected_verdict": "Needs work",
+  "expected_injection": false
+}

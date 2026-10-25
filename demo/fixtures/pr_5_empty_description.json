@@ -1,0 +1,47 @@
+{
+  "pr_id": 5,
+  "repo_name": "org/maintainer_shield",
+  "pr_url": "https://github.com/org/maintainer_shield/pull/5",
+  "author": "silent_coder",
+  "title": "chore: cleanups",
+  "raw_description": "",
+  "commits": [
+    {
+      "sha": "a7b8c9d0e1f2",
+      "message": "chore: cleanups",
+      "author": "silent_coder",
+      "date": "2026-10-25T12:00:00Z"
+    }
+  ],
+  "files": [
+    {
+      "filename": "pyproject.toml",
+      "category": "config",
+      "additions": 5,
+      "deletions": 2,
+      "status": "modified",
+      "patch": "@@ -12,2 +12,5 @@ dependencies = [\n+    \"uvicorn>=0.20.0\",\n"
+    },
+    {
+      "filename": "src/utils.py",
+      "category": "core",
+      "additions": 12,
+      "deletions": 10,
+      "status": "modified",
+      "patch": "@@ -15,10 +15,12 @@ def format_date(dt):\n-    return dt.strftime('%Y-%m-%d')\n+    return dt.isoformat()\n"
+    }
+  ],
+  "quick_checks": {
+    "has_description": false,
+    "description_length": 0,
+    "has_issue_link": false,
+    "linked_issues": [],
+    "is_whitespace_or_typo_only": false,
+    "ci_status": "none",
+    "flags": ["Empty description", "Missing motivation and issue reference"],
+    "score": 45,
+    "summary": "Blank pull request description providing no context or test verification."
+  },
+  "expected_verdict": "Needs work",
+  "expected_injection": false
+}

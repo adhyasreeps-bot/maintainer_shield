@@ -1,0 +1,39 @@
+{
+  "pr_id": 3,
+  "repo_name": "org/maintainer_shield",
+  "pr_url": "https://github.com/org/maintainer_shield/pull/3",
+  "author": "spam_bot42",
+  "title": "Update README.md",
+  "raw_description": "Updated readme.",
+  "commits": [
+    {
+      "sha": "e5f6a7b8c9d0",
+      "message": "Update README.md",
+      "author": "spam_bot42",
+      "date": "2026-10-25T11:00:00Z"
+    }
+  ],
+  "files": [
+    {
+      "filename": "README.md",
+      "category": "docs",
+      "additions": 1,
+      "deletions": 1,
+      "status": "modified",
+      "patch": "@@ -10,3 +10,3 @@\n-Maintainer Shield helps review pull requests.\n+Maintainer Shield helps review pull requests. \n"
+    }
+  ],
+  "quick_checks": {
+    "has_description": true,
+    "description_length": 15,
+    "has_issue_link": false,
+    "linked_issues": [],
+    "is_whitespace_or_typo_only": true,
+    "ci_status": "passed",
+    "flags": ["Whitespace or 1-character change only", "No linked issue reference"],
+    "score": 20,
+    "summary": "Whitespace-only diff with placeholder description. Classic spam archetype."
+  },
+  "expected_verdict": "Likely junk",
+  "expected_injection": false
+}

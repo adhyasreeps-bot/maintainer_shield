@@ -1,0 +1,47 @@
+{
+  "pr_id": 1,
+  "repo_name": "org/maintainer_shield",
+  "pr_url": "https://github.com/org/maintainer_shield/pull/1",
+  "author": "alex_dev",
+  "title": "fix(auth): handle expired token edgecase",
+  "raw_description": "Resolves issue where expired JWT tokens raise an unhandled 500 error instead of returning a clean 401 Unauthorized. Closes #123.\n\nIncluded unit tests in tests/test_jwt_auth.py to verify token expiration behavior.",
+  "commits": [
+    {
+      "sha": "a1b2c3d4e5f6",
+      "message": "fix(auth): handle expired token edgecase (#123)",
+      "author": "alex_dev",
+      "date": "2026-10-25T09:00:00Z"
+    }
+  ],
+  "files": [
+    {
+      "filename": "src/auth/jwt.py",
+      "category": "core",
+      "additions": 45,
+      "deletions": 12,
+      "status": "modified",
+      "patch": "@@ -45,12 +45,45 @@ def verify_token(token_str: str):\n+    try:\n+        payload = jwt.decode(token_str, SECRET, algorithms=['HS256'])\n+    except jwt.ExpiredSignatureError:\n+        raise AuthenticationError('Token has expired', status_code=401)\n"
+    },
+    {
+      "filename": "tests/test_jwt_auth.py",
+      "category": "tests",
+      "additions": 28,
+      "deletions": 2,
+      "status": "modified",
+      "patch": "@@ -10,2 +10,28 @@ def test_expired_token():\n+    expired = create_test_token(expired=True)\n+    response = client.get('/protected', headers={'Authorization': f'Bearer {expired}'})\n+    assert response.status_code == 401\n"
+    }
+  ],
+  "quick_checks": {
+    "has_description": true,
+    "description_length": 185,
+    "has_issue_link": true,
+    "linked_issues": ["#123"],
+    "is_whitespace_or_typo_only": false,
+    "ci_status": "passed",
+    "flags": [],
+    "score": 95,
+    "summary": "Clean bug fix with accompanying unit tests and linked issue."
+  },
+  "expected_verdict": "Looks good",
+  "expected_injection": false
+}

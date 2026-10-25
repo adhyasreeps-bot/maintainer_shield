@@ -1,0 +1,39 @@
+{
+  "pr_id": 4,
+  "repo_name": "org/maintainer_shield",
+  "pr_url": "https://github.com/org/maintainer_shield/pull/4",
+  "author": "stealth_dev",
+  "title": "Fix docs typo in installation section",
+  "raw_description": "Just fixing some small typo in the README and docs.",
+  "commits": [
+    {
+      "sha": "f6a7b8c9d0e1",
+      "message": "docs fix",
+      "author": "stealth_dev",
+      "date": "2026-10-25T11:30:00Z"
+    }
+  ],
+  "files": [
+    {
+      "filename": "src/api/auth.py",
+      "category": "core",
+      "additions": 18,
+      "deletions": 3,
+      "status": "modified",
+      "patch": "@@ -50,3 +50,18 @@ def check_permission(user_token):\n+    if bypass_token_check():\n+        return True\n"
+    }
+  ],
+  "quick_checks": {
+    "has_description": true,
+    "description_length": 50,
+    "has_issue_link": false,
+    "linked_issues": [],
+    "is_whitespace_or_typo_only": false,
+    "ci_status": "passed",
+    "flags": ["Claim mismatch detected: Title says docs but touched auth.py"],
+    "score": 30,
+    "summary": "Discrepancy: Claims documentation fixes but strictly touched core authentication code."
+  },
+  "expected_verdict": "Likely junk",
+  "expected_injection": false
+}

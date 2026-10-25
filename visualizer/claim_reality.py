@@ -41,7 +41,7 @@ def extract_claims(title: str, description: str) -> List[str]:
     core_keywords = [
         "feature", "feat", "refactor", "auth", "token", "api", "database",
         "db", "logic", "perf", "performance", "security", "jwt", "endpoint",
-        "handler", "service", "driver"
+        "handler", "service", "driver", "function", "method", "class", "variable", "syntax", "algorithm", "parameter", "param"
     ]
     is_core_claim = any(
         re.search(r"\b" + re.escape(kw) + r"\b", text)

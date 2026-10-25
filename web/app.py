@@ -335,3 +335,17 @@ async def dispatch_pr_action(pr_id: int, payload: ActionPayload, repo_name: Opti
     )
 
     return {"success": True, "results": res}
+
+
+@app.post("/api/prs/{pr_id}/review")
+async def trigger_ai_review(pr_id: int, repo_name: Optional[str] = "org/maintainer_shield"):
+    """REST API: Triggers Stage 3 & 4 AI Review and security scan on a PR."""
+    pr = db.get_pr(pr_id, repo_name) or DEMO_FIXTURES.get(pr_id)
+    if not pr:
+        raise HTTPException(status_code=404, detail="PR not found")
+
+    from ai.reviewer import AIReviewer
+    reviewer = AIReviewer(prefer_ollama=False)
+    pr.ai_review = reviewer.review(pr)
+    db.save_pr(pr)
+    return {"success": True, "ai_review": pr.ai_review}

@@ -1,7 +1,8 @@
 """
 Maintainer Shield: Command-Line Interface (CLI).
 Provides maintainers with direct terminal commands to ingest PRs,
-run Stage 1 quick checks, inspect triage history, and launch the web dashboard.
+run Stage 1 quick checks, Stage 2 visualizer, Stage 3 prompt injection defense,
+Stage 4 Ollama AI verdicts, run the 8-scenario demo battery, and launch the web dashboard.
 """
 
 import sys
@@ -25,7 +26,7 @@ from core.orchestrator import ShieldOrchestrator
 
 
 def print_scorecard(context: PRShieldContext) -> None:
-    """Pretty prints a PR Quick Check scorecard to the terminal."""
+    """Pretty prints a comprehensive 4-stage Maintainer Shield scorecard to the terminal."""
     qc = context.quick_checks
     if not qc:
         print("No quick check results available.")
@@ -33,29 +34,63 @@ def print_scorecard(context: PRShieldContext) -> None:
 
     score_color = "🟢" if qc.score >= 80 else ("🟡" if qc.score >= 50 else "🔴")
 
-    print("\n" + "=" * 60)
-    print(f"🛡️  MAINTAINER SHIELD — PR QUICK CHECK SCORECARD")
-    print("=" * 60)
+    print("\n" + "=" * 65)
+    print("🛡️  MAINTAINER SHIELD — PR TRIAGE & REVIEW SCORECARD")
+    print("=" * 65)
     print(f"Repository : {context.repo_name}")
-    print(f"PR #{context.pr_id}   : {context.title}")
+    print(f"PR #{context.pr_id:<5} : {context.title}")
     print(f"Author     : @{context.author}")
     print(f"URL        : {context.pr_url}")
-    print("-" * 60)
-    print(f"Health Score: {score_color} {qc.score} / 100")
-    print(f"Description : {'✅ Present' if qc.has_description else '❌ Missing / Placeholder'} ({qc.description_length} chars)")
-    print(f"Issue Link  : {'✅ ' + ', '.join(qc.linked_issues) if qc.has_issue_link else '⚠️  None found'}")
-    print(f"Trivial Diff: {'⚠️  Yes (Whitespace / Typo only)' if qc.is_whitespace_or_typo_only else '✅ Substantive code changes'}")
-    print(f"CI Status   : {qc.ci_status.upper()}")
-    print("-" * 60)
+    print("-" * 65)
+    print("STAGE 1: QUICK CHECKS")
+    print(f"  Health Score : {score_color} {qc.score} / 100")
+    print(f"  Description  : {'✅ Present' if qc.has_description else '❌ Missing / Placeholder'} ({qc.description_length} chars)")
+    print(f"  Issue Link   : {'✅ ' + ', '.join(qc.linked_issues) if qc.has_issue_link else '⚠️  None found'}")
+    print(f"  Trivial Diff : {'⚠️  Yes (Whitespace / Typo only)' if qc.is_whitespace_or_typo_only else '✅ Substantive code changes'}")
+    print(f"  CI Status    : {qc.ci_status.upper()}")
     if qc.flags:
-        print("Detected Flags:")
+        print("  Flags Detected:")
         for flag in qc.flags:
-            print(f"  • 🚩 {flag}")
+            print(f"    • 🚩 {flag}")
     else:
-        print("Detected Flags: None (Clean PR)")
-    print("-" * 60)
-    print(f"Summary: {qc.summary}")
-    print("=" * 60 + "\n")
+        print("  Flags Detected: None (Clean PR)")
+
+    # Stage 2: Visualizer info
+    if context.visualization:
+        viz = context.visualization
+        c_mismatch = viz.claim_vs_reality.get("is_mismatch", False)
+        viz_icon = "⚠️  Mismatch Detected" if c_mismatch else "✅ Claims Align with Diff"
+        print("-" * 65)
+        print("STAGE 2: VISUALIZER & SCOPE ANALYSIS")
+        print(f"  Claim vs Reality : {viz_icon}")
+        print(f"  Claimed Focus    : {viz.claim_vs_reality.get('claimed', 'N/A')}")
+        print(f"  Touched Files    : {viz.claim_vs_reality.get('actual', 'N/A')}")
+        if viz.commit_pattern_warnings:
+            print("  Commit Hygiene Warnings:")
+            for w in viz.commit_pattern_warnings:
+                print(f"    • ⚠️  {w}")
+
+    # Stage 3 & 4: Security Guardrails & AI Review
+    if context.ai_review:
+        rev = context.ai_review
+        print("-" * 65)
+        print("STAGE 3: PROMPT INJECTION & SECURITY DEFENSE")
+        if rev.is_suspicious_injection:
+            print("  Security Status  : 🚨 BLOCKED — Suspicious Adversarial Prompt Injection!")
+        else:
+            print("  Security Status  : 🛡️ Clean — No adversarial injection detected")
+
+        print("-" * 65)
+        print("STAGE 4: LOCAL AI REVIEW & MAINTAINER DRAFT")
+        v_badge = "🟢" if rev.verdict == "Looks good" else ("🟡" if rev.verdict == "Needs work" else "🔴")
+        print(f"  Verdict          : {v_badge} {rev.verdict.upper()} ({int(rev.confidence_score * 100)}% confidence)")
+        print(f"  Reasoning        : {rev.short_reason}")
+        print("-" * 65)
+        print("  Educational Maintainer Draft Reply:")
+        for line in rev.draft_reply.splitlines():
+            print(f"    {line}")
+
+    print("=" * 65 + "\n")
 
 
 def cmd_check(args: argparse.Namespace) -> None:
@@ -98,7 +133,7 @@ def cmd_mock(args: argparse.Namespace) -> None:
     elif scenario == "beginner":
         mock_ctx = GitHubClient.create_mock_pr(
             pr_id=302,
-            title="fix: handle null pointer in auth module",
+            title="fix: typo in function and added fix",
             description="Fixed the bug when user is null.",
             files=[
                 FileChange(
@@ -154,12 +189,13 @@ def cmd_list(args: argparse.Namespace) -> None:
         return
 
     print("\n📦 RECENTLY TRIAGED PRS:")
-    print(f"{'PR #':<8} {'AUTHOR':<18} {'SCORE':<8} {'CI':<10} {'TITLE':<40}")
+    print(f"{'PR #':<8} {'AUTHOR':<18} {'SCORE':<8} {'VERDICT':<14} {'TITLE':<38}")
     print("-" * 88)
     for r in records:
         score_val = str(r.get("quick_check_score", "N/A"))
-        title_truncated = (r["title"][:37] + "...") if len(r["title"]) > 37 else r["title"]
-        print(f"#{r['pr_id']:<7} @{r['author']:<17} {score_val:<8} {r.get('ci_status', 'none'):<10} {title_truncated:<40}")
+        verdict_val = r.get("ai_verdict", "unreviewed") or "unreviewed"
+        title_truncated = (r["title"][:35] + "...") if len(r["title"]) > 35 else r["title"]
+        print(f"#{r['pr_id']:<7} @{r['author']:<17} {score_val:<8} {verdict_val:<14} {title_truncated:<38}")
     print()
 
 
@@ -171,6 +207,19 @@ def cmd_show(args: argparse.Namespace) -> None:
         print(f"PR #{args.pr_id} not found in database.")
         return
     print(json.dumps(context.model_dump(), indent=2))
+
+
+def cmd_demo(args: argparse.Namespace) -> None:
+    """Handles 'demo' command to run the 8 PR scenario test battery."""
+    from demo.run_demo import main as run_demo_main
+    sys.argv = ["run_demo.py"]
+    if args.pr:
+        sys.argv.extend(["--pr", str(args.pr)])
+    if args.fast:
+        sys.argv.append("--fast")
+    if args.ollama:
+        sys.argv.append("--ollama")
+    run_demo_main()
 
 
 def cmd_web(args: argparse.Namespace) -> None:
@@ -187,13 +236,22 @@ def main() -> None:
     )
     subparsers = parser.add_subparsers(dest="command", required=True)
 
-    # Command: check
-    check_p = subparsers.add_parser("check", help="Fetch and run Stage 1 quick checks on a GitHub PR")
+    # Command: check / review
+    check_p = subparsers.add_parser("check", help="Fetch and run full 4-stage review on a GitHub PR")
     check_p.add_argument("identifier", help="PR URL or owner/repo#number (e.g. owner/repo#10)")
 
+    review_p = subparsers.add_parser("review", help="Alias for check: Run full AI review on a GitHub PR")
+    review_p.add_argument("identifier", help="PR URL or owner/repo#number")
+
     # Command: mock
-    mock_p = subparsers.add_parser("mock", help="Run quick checks on offline mock scenarios")
+    mock_p = subparsers.add_parser("mock", help="Run full pipeline on offline mock scenarios")
     mock_p.add_argument("scenario", choices=["good", "whitespace", "beginner", "failing_ci"], help="Scenario name")
+
+    # Command: demo
+    demo_p = subparsers.add_parser("demo", help="Run the automated 8-scenario demo evaluation suite")
+    demo_p.add_argument("--pr", type=int, choices=range(1, 9), help="Run a specific PR scenario (1 to 8)")
+    demo_p.add_argument("--fast", action="store_true", help="High-speed presentation mode")
+    demo_p.add_argument("--ollama", action="store_true", help="Run through local Ollama LLM")
 
     # Command: list
     list_p = subparsers.add_parser("list", help="List triaged PRs from local SQLite store")
@@ -212,10 +270,12 @@ def main() -> None:
     web_p.add_argument("--reload", action="store_true", help="Enable live code reloading")
 
     args = parser.parse_args()
-    if args.command == "check":
+    if args.command in ("check", "review"):
         cmd_check(args)
     elif args.command == "mock":
         cmd_mock(args)
+    elif args.command == "demo":
+        cmd_demo(args)
     elif args.command == "list":
         cmd_list(args)
     elif args.command == "show":
